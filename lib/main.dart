@@ -47,9 +47,10 @@ class _LoginPageState extends State<LoginPage> {
     setState(() => _isLoggingIn = false);
     // For this clone, just show a snackbar as a placeholder
     if (!mounted) return;
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text('Logging in as ${_emailCtrl.text}')));
+    // Navigate to HomePage after "login"
+    Navigator.of(context).pushReplacement(
+      MaterialPageRoute(builder: (_) => HomePage(email: _emailCtrl.text)),
+    );
   }
 
   @override
@@ -161,9 +162,10 @@ class _LoginPageState extends State<LoginPage> {
                                         width: 16,
                                         child: CircularProgressIndicator(
                                           strokeWidth: 2,
-                                          valueColor: AlwaysStoppedAnimation<Color>(
-                                            Colors.white,
-                                          ),
+                                          valueColor:
+                                              AlwaysStoppedAnimation<Color>(
+                                                Colors.white,
+                                              ),
                                         ),
                                       )
                                     : const Text(
@@ -220,6 +222,222 @@ class _LoginPageState extends State<LoginPage> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+}
+
+class HomePage extends StatelessWidget {
+  final String email;
+  const HomePage({super.key, required this.email});
+
+  @override
+  Widget build(BuildContext context) {
+    final fbBlue = const Color(0xFF1877F2);
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: fbBlue,
+        title: const Text('Home'),
+        actions: [
+          IconButton(
+            onPressed: () => Navigator.push(
+              context,
+              MaterialPageRoute(builder: (_) => ProfilePage(email: email)),
+            ),
+            icon: const Icon(Icons.person),
+            tooltip: 'Profile',
+          ),
+        ],
+      ),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text('Welcome, $email', style: const TextStyle(fontSize: 18)),
+            const SizedBox(height: 18),
+            Card(
+              elevation: 2,
+              child: ListTile(
+                leading: const Icon(Icons.person_add, color: Colors.blue),
+                title: const Text('Add Friend'),
+                subtitle: const Text('Add a new friend to your list'),
+                trailing: ElevatedButton(
+                  style: ElevatedButton.styleFrom(backgroundColor: fbBlue),
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const AddFriendPage()),
+                  ),
+                  child: const Text('Open'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Card(
+              elevation: 2,
+              child: ListTile(
+                leading: const Icon(Icons.person, color: Colors.green),
+                title: const Text('Profile'),
+                subtitle: const Text('View or edit your profile'),
+                trailing: ElevatedButton(
+                  onPressed: () => Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ProfilePage(email: email),
+                    ),
+                  ),
+                  child: const Text('Open'),
+                ),
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () => Navigator.pushReplacement(
+                context,
+                MaterialPageRoute(builder: (_) => const LoginPage()),
+              ),
+              icon: const Icon(Icons.logout),
+              label: const Text('Logout'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class AddFriendPage extends StatefulWidget {
+  const AddFriendPage({super.key});
+
+  @override
+  State<AddFriendPage> createState() => _AddFriendPageState();
+}
+
+class _AddFriendPageState extends State<AddFriendPage> {
+  final _formKey = GlobalKey<FormState>();
+  final TextEditingController _nameCtrl = TextEditingController();
+  final TextEditingController _emailCtrl = TextEditingController();
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _emailCtrl.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (_formKey.currentState?.validate() ?? false) {
+      final name = _nameCtrl.text.trim();
+      final email = _emailCtrl.text.trim();
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Added friend: $name ($email)')));
+      _nameCtrl.clear();
+      _emailCtrl.clear();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Add Friend')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            children: [
+              TextFormField(
+                controller: _nameCtrl,
+                decoration: const InputDecoration(labelText: 'Full name'),
+                validator: (v) =>
+                    (v == null || v.trim().isEmpty) ? 'Enter a name' : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: _emailCtrl,
+                decoration: const InputDecoration(
+                  labelText: 'Email (optional)',
+                ),
+                keyboardType: TextInputType.emailAddress,
+                validator: (v) {
+                  if (v == null || v.trim().isEmpty) return null;
+                  final valid = RegExp(
+                    r"^[^@\s]+@[^@\s]+\.[^@\s]+$",
+                  ).hasMatch(v);
+                  return valid ? null : 'Enter a valid email';
+                },
+              ),
+              const SizedBox(height: 18),
+              ElevatedButton(onPressed: _submit, child: const Text('Add')),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class ProfilePage extends StatefulWidget {
+  final String email;
+  const ProfilePage({super.key, required this.email});
+
+  @override
+  State<ProfilePage> createState() => _ProfilePageState();
+}
+
+class _ProfilePageState extends State<ProfilePage> {
+  late TextEditingController _nameCtrl;
+  late TextEditingController _bioCtrl;
+
+  @override
+  void initState() {
+    super.initState();
+    _nameCtrl = TextEditingController(text: 'User');
+    _bioCtrl = TextEditingController(text: 'This is my profile.');
+  }
+
+  @override
+  void dispose() {
+    _nameCtrl.dispose();
+    _bioCtrl.dispose();
+    super.dispose();
+  }
+
+  void _save() {
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Profile saved')));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(title: const Text('Profile')),
+      body: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          children: [
+            TextFormField(
+              controller: _nameCtrl,
+              decoration: const InputDecoration(labelText: 'Display name'),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: TextEditingController(text: widget.email),
+              readOnly: true,
+              decoration: const InputDecoration(labelText: 'Email'),
+            ),
+            const SizedBox(height: 12),
+            TextFormField(
+              controller: _bioCtrl,
+              decoration: const InputDecoration(labelText: 'Bio'),
+              maxLines: 3,
+            ),
+            const SizedBox(height: 18),
+            ElevatedButton(onPressed: _save, child: const Text('Save')),
+          ],
         ),
       ),
     );
