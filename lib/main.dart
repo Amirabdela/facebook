@@ -11,7 +11,7 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'Facebook Login Clone',
+      title: 'Friendly Social',
       theme: ThemeData(
         primaryColor: const Color(0xFF1877F2), // Facebook blue
         useMaterial3: true,
@@ -42,14 +42,40 @@ class _LoginPageState extends State<LoginPage> {
   }
 
   void _login() async {
+    final email = _emailCtrl.text.trim();
+    final pass = _passCtrl.text.trim();
+
+    if (email.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your email or phone')),
+      );
+      return;
+    }
+    if (pass.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please enter your password')),
+      );
+      return;
+    }
+
     setState(() => _isLoggingIn = true);
     await Future.delayed(const Duration(seconds: 1));
     setState(() => _isLoggingIn = false);
-    // For this clone, just show a snackbar as a placeholder
     if (!mounted) return;
-    // Navigate to HomePage after "login"
+
+    // derive a friendly display name from the email/phone
+    String displayName = 'Friend';
+    if (email.contains('@')) {
+      displayName = email.split('@').first;
+      if (displayName.isEmpty) displayName = 'Friend';
+    } else if (email.isNotEmpty) {
+      displayName = email;
+    }
+
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => HomePage(email: _emailCtrl.text)),
+      MaterialPageRoute(
+        builder: (_) => HomePage(email: email, displayName: displayName),
+      ),
     );
   }
 
@@ -76,21 +102,13 @@ class _LoginPageState extends State<LoginPage> {
                         color: Colors.white,
                         shape: BoxShape.circle,
                       ),
-                      child: Center(
-                        child: Text(
-                          'f',
-                          style: TextStyle(
-                            color: fbBlue,
-                            fontSize: 48,
-                            fontWeight: FontWeight.bold,
-                            fontFamily: 'Arial',
-                          ),
-                        ),
+                      child: const Center(
+                        child: Text('🙂', style: TextStyle(fontSize: 44)),
                       ),
                     ),
                     const SizedBox(height: 12),
                     const Text(
-                      'Facebook',
+                      'Friendly Social',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 22,
@@ -120,7 +138,8 @@ class _LoginPageState extends State<LoginPage> {
                               controller: _emailCtrl,
                               keyboardType: TextInputType.emailAddress,
                               decoration: const InputDecoration(
-                                labelText: 'Email or phone number',
+                                labelText: 'Email or phone',
+                                hintText: 'you@example.com or +123456789',
                                 border: InputBorder.none,
                               ),
                             ),
@@ -130,6 +149,7 @@ class _LoginPageState extends State<LoginPage> {
                               obscureText: _obscure,
                               decoration: InputDecoration(
                                 labelText: 'Password',
+                                hintText: 'Enter your password',
                                 border: InputBorder.none,
                                 suffixIcon: IconButton(
                                   icon: Icon(
@@ -169,15 +189,46 @@ class _LoginPageState extends State<LoginPage> {
                                         ),
                                       )
                                     : const Text(
-                                        'Log In',
+                                        'Log in',
                                         style: TextStyle(fontSize: 16),
                                       ),
                               ),
                             ),
                             TextButton(
-                              onPressed: () {},
+                              onPressed: () {
+                                showDialog(
+                                  context: context,
+                                  builder: (_) => AlertDialog(
+                                    title: const Text('Reset password'),
+                                    content: const Text(
+                                      'We can send password reset instructions to your email.',
+                                    ),
+                                    actions: [
+                                      TextButton(
+                                        onPressed: () => Navigator.pop(context),
+                                        child: const Text('Cancel'),
+                                      ),
+                                      TextButton(
+                                        onPressed: () {
+                                          Navigator.pop(context);
+                                          ScaffoldMessenger.of(
+                                            context,
+                                          ).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                'If an account exists we sent reset instructions.',
+                                              ),
+                                            ),
+                                          );
+                                        },
+                                        child: const Text('Send'),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                               child: const Text(
-                                'Forgotten password?',
+                                'Forgot password?',
                                 style: TextStyle(color: Colors.blue),
                               ),
                             ),
@@ -202,7 +253,7 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         child: const Text(
-                          'Create new account',
+                          "Create an account — it's quick & easy",
                           style: TextStyle(fontSize: 16),
                         ),
                       ),
@@ -230,7 +281,8 @@ class _LoginPageState extends State<LoginPage> {
 
 class HomePage extends StatelessWidget {
   final String email;
-  const HomePage({super.key, required this.email});
+  final String displayName;
+  const HomePage({super.key, required this.email, required this.displayName});
 
   @override
   Widget build(BuildContext context) {
@@ -255,7 +307,10 @@ class HomePage extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
-            Text('Welcome, $email', style: const TextStyle(fontSize: 18)),
+            Text(
+              'Welcome back, $displayName 👋',
+              style: const TextStyle(fontSize: 18),
+            ),
             const SizedBox(height: 18),
             Card(
               elevation: 2,
@@ -330,9 +385,12 @@ class _AddFriendPageState extends State<AddFriendPage> {
     if (_formKey.currentState?.validate() ?? false) {
       final name = _nameCtrl.text.trim();
       final email = _emailCtrl.text.trim();
+      final message = email.isEmpty
+          ? 'You added $name to your friends.'
+          : 'You added $name ($email) to your friends.';
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text('Added friend: $name ($email)')));
+      ).showSnackBar(SnackBar(content: Text(message)));
       _nameCtrl.clear();
       _emailCtrl.clear();
     }
@@ -406,9 +464,11 @@ class _ProfilePageState extends State<ProfilePage> {
   }
 
   void _save() {
+    final name = _nameCtrl.text.trim();
+    final who = name.isEmpty ? 'Profile' : name;
     ScaffoldMessenger.of(
       context,
-    ).showSnackBar(const SnackBar(content: Text('Profile saved')));
+    ).showSnackBar(SnackBar(content: Text('Profile saved — thanks, $who!')));
   }
 
   @override
