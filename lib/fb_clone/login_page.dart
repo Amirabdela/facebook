@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 
 class FBLoginPage extends StatefulWidget {
   const FBLoginPage({super.key});
@@ -21,6 +23,42 @@ class _FBLoginPageState extends State<FBLoginPage> {
 
   void _goFeed() {
     Navigator.pushReplacementNamed(context, '/fb_feed');
+  }
+
+  Future<UserCredential?> _signInWithGoogle() async {
+    try {
+      // Trigger the authentication flow
+      final GoogleSignInAccount? googleUser = await GoogleSignIn().signIn();
+
+      if (googleUser == null) {
+        // The user canceled the sign-in
+        return null;
+      }
+
+      // Obtain the auth details from the request
+      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+
+      // Create a new credential
+      final OAuthCredential credential = GoogleAuthProvider.credential(
+        accessToken: googleAuth.accessToken,
+        idToken: googleAuth.idToken,
+      );
+
+      // Once signed in, return the UserCredential
+      final UserCredential userCredential = await FirebaseAuth.instance.signInWithCredential(credential);
+      
+      if (userCredential.user != null) {
+          _goFeed();
+      }
+      return userCredential;
+      
+    } catch (e) {
+      print(e);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to sign in with Google: $e')),
+      );
+      return null;
+    }
   }
 
   @override
@@ -87,6 +125,23 @@ class _FBLoginPageState extends State<FBLoginPage> {
                 OutlinedButton(
                   onPressed: () {},
                   child: const Text('Create New Account'),
+                ),
+                const SizedBox(height: 12),
+                OutlinedButton(
+                  onPressed: () async {
+                     await _signInWithGoogle();
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(width: 1, color: Colors.grey),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                       // Ideally use an asset, but text is fine for now if no asset
+                       const Text('Continue with Google'),
+                    ],
+                  ),
                 ),
               ],
             ),
